@@ -41,3 +41,6 @@ optional arguments:
 
 ![Screenshot of Eventlog Visualizer](test/screenshot.png)
 
+# License
+
+This software is under MIT License (see [LICENSE]).
