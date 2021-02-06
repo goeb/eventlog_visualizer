@@ -11,6 +11,7 @@ import sys
 import argparse
 import datetime
 import matplotlib.pyplot as pyplot
+import matplotlib.dates as mdates
 
 VERSION = '1.0'
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
@@ -100,6 +101,8 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
 
     fig, ax1 = pyplot.subplots()
 
+    ax1.format_xdata = mdates.DateFormatter('%Y-%m-%d %H:%M')
+
     # Density
     color = 'tab:red'
     ax1.set_xlabel('datetime')
@@ -119,31 +122,48 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
     ax2.tick_params(axis='y', labelcolor=color)
     
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    
+    # rotates and right aligns the x labels, and moves the bottom of the
+    # axes up to make room for them
+    fig.autofmt_xdate()
+
+    myFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
+    ax1.xaxis.set_major_formatter(myFmt)
+
     pyplot.show()
     
 
 
 def main():
+    global DATE_FORMAT
     parser = argparse.ArgumentParser(description=main.__doc__, prog='visualize')
     parser.add_argument('file', nargs=1, help='log file')
     parser.add_argument('-V', '--version', help='print version and exit', action='version', version='%(prog)s' + VERSION)
     #parser.add_argument('-v', '--verbose', action='store_true', help='be more verbose')
     parser.add_argument('-d', '--density', help='pattern for density representation')
     parser.add_argument('-s', '--spot', help='pattern for spot representation')
+    parser.add_argument('-f', '--date-format',
+                        help='Date format for strptime (default %s)' % (DATE_FORMAT.replace('%', '%%')) )
 
     args = parser.parse_args()
 
     input_file = args.file[0]
     pattern_density = args.density
     pattern_spot = args.spot
+    if args.date_format: DATE_FORMAT = args.date_format
 
     lines = load_file(input_file)
 
     if pattern_density is not None:
         analysis_density = get_density_analysis(lines, pattern_density)
+    else:
+        analysis_density = []
 
     if pattern_spot is not None:
         analysis_spot = get_spot_analysis(lines, pattern_spot)
+    else:
+        analysis_spot = []
+
 
     # Add starting point and ending point to have a global duration covering the whole period.
     date_start, _x = parse_line(lines[0])
