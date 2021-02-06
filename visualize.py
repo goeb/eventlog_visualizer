@@ -112,7 +112,7 @@ def get_color(id):
     if id >= len(Colors): die('Not nough colors to represent data')
     return Colors[id]
 
-def display_graph(analysis_density, analysis_spot, date_start, date_end):
+def display_graph(analysis_density, analysis_spot, title):
     """Display a graph with the curve of the density and the spots.
     
     Arguments:
@@ -120,6 +120,7 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
                            <pattern> => List of tuple (<datetime>, <density>)
         analysis_spot    : Dictionary
                            <pattern> => List of datetimes
+        title            : optional title
     """
 
     fig, ax1 = pyplot.subplots()
@@ -159,8 +160,6 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
         spot_value += 1
         color_idx += 1
 
-    fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    
     # rotates and right aligns the x labels, and moves the bottom of the
     # axes up to make room for them
     fig.autofmt_xdate()
@@ -168,6 +167,7 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
     myFmt = mdates.DateFormatter('%Y-%m-%d %H:%M')
     ax1.xaxis.set_major_formatter(myFmt)
 
+    pyplot.title(title)
     pyplot.show()
     
 
@@ -187,6 +187,7 @@ def main():
                              (DATE_FORMAT.replace('%', '%%')) )
     parser.add_argument('--density-window-size', type=int,
                         help='Size of the time window for counting the density (seconds). Default is 5 min.')
+    parser.add_argument('-t', '--title', help='Set a title.')
 
     args = parser.parse_args()
 
@@ -208,12 +209,7 @@ def main():
             analysis = get_spot_analysis(lines, pattern_spot)
             analysis_spot[pattern_spot] = analysis
 
-    # Add starting point and ending point to have a global duration covering
-    # the whole period.
-    date_start, _x = parse_line(lines[0])
-    date_end, _x = parse_line(lines[-1])
-
-    display_graph(analysis_density, analysis_spot, date_start, date_end)
+    display_graph(analysis_density, analysis_spot, args.title)
 
     
 
