@@ -7,14 +7,16 @@ Show a graph of events over time in either of two representations:
     - 'spot': events are represented as points
     - 'density': the number of events per period is represented as a curve
 
-Supported input format:
-    YYYY-mm-ddTHH:MM:SS.msec text ...
+Supported log format:
+    LOG := LINE ...
+    LINE := DATETIME SPACE TEXT EOL
 
 """
 
 import sys
 import argparse
 import datetime
+import re
 import matplotlib.pyplot as pyplot
 import matplotlib.dates as mdates
 
@@ -58,6 +60,7 @@ def get_density_analysis(lines, pattern_density):
 
     events_window = [] # tuple ( <datetime>, <data> )
     density_analysis = []
+    pattern_re = re.compile(pattern_density)
 
     if len(lines) == 0: return density_analysis
 
@@ -85,8 +88,7 @@ def get_density_analysis(lines, pattern_density):
             # start next window
             window_count = 0
 
-        # TODO use regex
-        if data.find(pattern_density) >= 0:
+        if pattern_re.search(data):
             window_count += 1
 
     return density_analysis
@@ -95,11 +97,12 @@ def get_density_analysis(lines, pattern_density):
 def get_spot_analysis(lines, pattern_spot):
     """Return the list of the dates when the event is matching the pattern."""
     spot_analysis = [] # [ <datetime> ]
+    pattern_spot_re = re.compile(pattern_spot)
     for line in lines:
         d, data = parse_line(line)
         if d is None: continue
 
-        if data.find(pattern_spot) >= 0:
+        if pattern_spot_re.search(data):
             spot_analysis.append(d)
 
     return spot_analysis
@@ -134,7 +137,7 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
         data_density = [dat for _x, dat in data] # values for the y axis
         ax1.plot(t, data_density, color=color, label=name, drawstyle='steps-post')
         ax1.tick_params(axis='y', labelcolor=color)
-        ax1.legend()
+        ax1.legend(loc="upper left")
         color_idx += 1
     
     if len(analysis_spot):
@@ -152,7 +155,7 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
         data_spot = [spot_value for _x in data]
         ax2.scatter(t, data_spot, color=color, label=name)
         ax2.tick_params(axis='y', labelcolor=color)
-        ax2.legend()
+        ax2.legend(loc="upper right")
         spot_value += 1
         color_idx += 1
 
@@ -176,14 +179,14 @@ def main():
     parser.add_argument('-V', '--version', help='print version and exit',
                         action='version', version='%(prog)s' + VERSION)
     parser.add_argument('-d', '--density', nargs='+', metavar='PATTERN',
-                        help='pattern(s) for density representation')
+                        help='pattern(s) for density representation (RegEx)')
     parser.add_argument('-s', '--spot', nargs='+', metavar='PATTERN',
-                        help='pattern(s) for spot representation')
+                        help='pattern(s) for spot representation (RegEx)')
     parser.add_argument('-f', '--date-format',
                         help='Date format for strptime (default %s)' % 
                              (DATE_FORMAT.replace('%', '%%')) )
     parser.add_argument('--density-window-size', type=int,
-                        help='Size of the time windows for counting the density (seconds). Default is 5 min.')
+                        help='Size of the time window for counting the density (seconds). Default is 5 min.')
 
     args = parser.parse_args()
 
