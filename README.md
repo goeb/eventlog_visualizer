@@ -43,4 +43,4 @@ optional arguments:
 
 # License
 
-This software is under MIT License (see [LICENSE]).
+This software is under MIT License (see [LICENSE](LICENSE)).
