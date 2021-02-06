@@ -1,6 +1,7 @@
 2019-03-15T13:02:45.128 info available space: 50 M
 2019-03-15T13:07:44.128 info available space: 50 M
 2019-03-15T13:12:43.128 info available space: 50 M
+2019-03-15T13:17:41.128 warning
 2019-03-15T13:17:42.128 err Disk access I/O error on sector 0x00012221
 2019-03-15T13:22:41.128 info available space: 50 M
 2019-03-15T13:27:40.128 info available space: 50 M
@@ -8,6 +9,8 @@
 2019-03-15T13:33:39.128 err Disk access I/O error on sector 0x00012221
 2019-03-15T13:37:38.128 info available space: 50 M
 2019-03-15T13:42:37.128 info available space: 50 M
+2019-03-15T13:47:20.000 warning
+2019-03-15T13:47:30.000 warning
 2019-03-15T13:47:36.128 err
 2019-03-15T13:48:36.128 info available space: 50 M
 2019-03-15T13:49:36.128 err

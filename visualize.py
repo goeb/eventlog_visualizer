@@ -90,13 +90,19 @@ def get_spot_analysis(lines, pattern_spot):
 
     return spot_analysis
 
+def get_color(id):
+    Colors = [ 'b', 'g', 'r', 'c', 'm', 'y', 'k' ]
+    if id >= len(Colors): die('Not nough colors to represent data')
+    return Colors[id]
 
 def display_graph(analysis_density, analysis_spot, date_start, date_end):
     """Display a graph with the curve of the density and the spots.
     
     Arguments:
-        analysis_density : List of tuple (<datetime>, <density>)
-        analysis_spot    : List of datetimes
+        analysis_density : Dictionary
+                           <pattern> => List of tuple (<datetime>, <density>)
+        analysis_spot    : Dictionary
+                           <pattern> => List of datetimes
     """
 
     fig, ax1 = pyplot.subplots()
@@ -107,19 +113,29 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
     color = 'tab:red'
     ax1.set_xlabel('datetime')
     ax1.set_ylabel('density', color=color)
-    t = [d for d, _x in analysis_density]
-    data_density = [data for _x, data in analysis_density]
-    ax1.plot(t, data_density, color=color)
-    ax1.tick_params(axis='y', labelcolor=color)
+    for name in analysis_density:
+        data = analysis_density[name]
+        t = [d for d, _x in data] # dates for the x axis
+        data_density = [dat for _x, dat in data] # values for the y axis
+        ax1.plot(t, data_density, color=color, label=name)
+        ax1.tick_params(axis='y', labelcolor=color)
+        ax1.legend()
     
-    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    if len(analysis_spot):
+        ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        spot_value = 0
     
-    color = 'tab:blue'
-    ax2.set_ylabel('spot', color=color)  # we already handled the x-label with ax1
-    t = analysis_spot
-    data_spot = [1 for _x in analysis_spot] # all spots are valued '1'
-    ax2.scatter(t, data_spot, color=color)
-    ax2.tick_params(axis='y', labelcolor=color)
+    for name in analysis_spot:
+        data = analysis_spot[name]
+        # each spot analysis has a different y value and color
+        color = get_color(spot_value)
+        ax2.set_ylabel('spot', color=color)  # we already handled the x-label with ax1
+        t = data
+        data_spot = [spot_value for _x in data]
+        ax2.scatter(t, data_spot, color=color, label=name)
+        ax2.tick_params(axis='y', labelcolor=color)
+        ax2.legend()
+        spot_value += 1
     
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     
@@ -138,36 +154,38 @@ def main():
     global DATE_FORMAT
     parser = argparse.ArgumentParser(description=main.__doc__, prog='visualize')
     parser.add_argument('file', nargs=1, help='log file')
-    parser.add_argument('-V', '--version', help='print version and exit', action='version', version='%(prog)s' + VERSION)
-    #parser.add_argument('-v', '--verbose', action='store_true', help='be more verbose')
-    parser.add_argument('-d', '--density', help='pattern for density representation')
-    parser.add_argument('-s', '--spot', help='pattern for spot representation')
+    parser.add_argument('-V', '--version', help='print version and exit',
+                        action='version', version='%(prog)s' + VERSION)
+    parser.add_argument('-d', '--density', nargs='+',
+                        help='pattern for density representation')
+    parser.add_argument('-s', '--spot', nargs='+',
+                        help='pattern for spot representation')
     parser.add_argument('-f', '--date-format',
-                        help='Date format for strptime (default %s)' % (DATE_FORMAT.replace('%', '%%')) )
+                        help='Date format for strptime (default %s)' % 
+                             (DATE_FORMAT.replace('%', '%%')) )
 
     args = parser.parse_args()
 
     input_file = args.file[0]
-    pattern_density = args.density
-    pattern_spot = args.spot
     if args.date_format: DATE_FORMAT = args.date_format
 
     lines = load_file(input_file)
 
-    if pattern_density is not None:
-        analysis_density = get_density_analysis(lines, pattern_density)
-    else:
-        analysis_density = []
+    analysis_density = {}
+    for pattern_density in args.density:
+        analysis = get_density_analysis(lines, pattern_density)
+        analysis_density[pattern_density] = analysis
 
-    if pattern_spot is not None:
-        analysis_spot = get_spot_analysis(lines, pattern_spot)
-    else:
-        analysis_spot = []
+    analysis_spot = {}
+    for pattern_spot in args.spot:
+        analysis = get_spot_analysis(lines, pattern_spot)
+        analysis_spot[pattern_spot] = analysis
 
-
-    # Add starting point and ending point to have a global duration covering the whole period.
+    # Add starting point and ending point to have a global duration covering
+    # the whole period.
     date_start, _x = parse_line(lines[0])
     date_end, _x = parse_line(lines[-1])
+
     display_graph(analysis_density, analysis_spot, date_start, date_end)
 
     
