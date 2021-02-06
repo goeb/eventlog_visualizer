@@ -2,6 +2,11 @@
 # -*- coding: utf-8 -*-
 """Eventlog Visualizer
 
+Show a graph of events over time in either of two representations:
+
+    - 'spot': events are represented as points
+    - 'density': the number of events per period is represented as a curve
+
 Supported input format:
     YYYY-mm-ddTHH:MM:SS.msec text ...
 
@@ -15,6 +20,7 @@ import matplotlib.dates as mdates
 
 VERSION = '1.0'
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+DENSITY_WINDOW_SIZE_S = 300 # 5 minutes
 
 def die(msg):
     sys.stderr.write('Fatal Error: ' + msg + '\n')
@@ -50,30 +56,38 @@ def get_density_analysis(lines, pattern_density):
     in the previous period. When the number is zero, the count is not stored.
     """
 
-    WINDOW_SIZE_S = 300 # 5 minutes
-    WINDOW_START = None # start of the time window
     events_window = [] # tuple ( <datetime>, <data> )
     density_analysis = []
 
+    if len(lines) == 0: return density_analysis
+
+    # Start from the first datetime and walk through each subsequent time window
+    window_start, data = parse_line(lines[0])
+    window_count = 0
+    window_size = datetime.timedelta(seconds=DENSITY_WINDOW_SIZE_S)
+
     for line in lines:
         d, data = parse_line(line)
-        if d is None: continue
+        if d is None:
+            lines.pop(0) # consume the line
+            continue
 
-        # Remove events older that the window size
-        WINDOW_START = d - datetime.timedelta(seconds=WINDOW_SIZE_S)
-        while len(events_window) and events_window[0][0] < WINDOW_START:
-            events_window.pop(0)
+        if d > window_start + window_size:
+            # record the finishing window
+            density_analysis.append( (window_start, window_count) )
+            window_start += window_size # next window
 
+            # add empty data in all windows
+            while d > window_start + window_size:
+                window_start += window_size
+                density_analysis.append( (window_start, 0) )
+
+            # start next window
+            window_count = 0
+
+        # TODO use regex
         if data.find(pattern_density) >= 0:
-            # Add the event
-            events_window.append( (d, data) )
-
-        # Compute the density
-        density = len(events_window)
-        density_analysis.append( (d, density) )
-        # TODO may possibliy be optimized not storing all zeros
-        # TODO may possibliy be smoother if we inserted dates for decreasing
-        #      gradually the density during long inactivity
+            window_count += 1
 
     return density_analysis
 
@@ -109,26 +123,30 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
 
     ax1.format_xdata = mdates.DateFormatter('%Y-%m-%d %H:%M')
 
+    color_idx = 0 # inreased for each dataset
     # Density
-    color = 'tab:red'
     ax1.set_xlabel('datetime')
-    ax1.set_ylabel('density', color=color)
+    ax1.set_ylabel('density (%d s)' % (DENSITY_WINDOW_SIZE_S), color=get_color(color_idx))
     for name in analysis_density:
         data = analysis_density[name]
+        color = get_color(color_idx)
         t = [d for d, _x in data] # dates for the x axis
         data_density = [dat for _x, dat in data] # values for the y axis
-        ax1.plot(t, data_density, color=color, label=name)
+        ax1.plot(t, data_density, color=color, label=name, drawstyle='steps-post')
         ax1.tick_params(axis='y', labelcolor=color)
         ax1.legend()
+        color_idx += 1
     
     if len(analysis_spot):
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+        # each spot analysis has a different y value
         spot_value = 0
+        ax2.set_ylim(-1, len(analysis_spot)+1)
+        ax2.get_yaxis().set_visible(False)
     
     for name in analysis_spot:
         data = analysis_spot[name]
-        # each spot analysis has a different y value and color
-        color = get_color(spot_value)
+        color = get_color(color_idx)
         ax2.set_ylabel('spot', color=color)  # we already handled the x-label with ax1
         t = data
         data_spot = [spot_value for _x in data]
@@ -136,7 +154,8 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
         ax2.tick_params(axis='y', labelcolor=color)
         ax2.legend()
         spot_value += 1
-    
+        color_idx += 1
+
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     
     # rotates and right aligns the x labels, and moves the bottom of the
@@ -151,35 +170,40 @@ def display_graph(analysis_density, analysis_spot, date_start, date_end):
 
 
 def main():
-    global DATE_FORMAT
+    global DATE_FORMAT, DENSITY_WINDOW_SIZE_S
     parser = argparse.ArgumentParser(description=main.__doc__, prog='visualize')
     parser.add_argument('file', nargs=1, help='log file')
     parser.add_argument('-V', '--version', help='print version and exit',
                         action='version', version='%(prog)s' + VERSION)
-    parser.add_argument('-d', '--density', nargs='+',
-                        help='pattern for density representation')
-    parser.add_argument('-s', '--spot', nargs='+',
-                        help='pattern for spot representation')
+    parser.add_argument('-d', '--density', nargs='+', metavar='PATTERN',
+                        help='pattern(s) for density representation')
+    parser.add_argument('-s', '--spot', nargs='+', metavar='PATTERN',
+                        help='pattern(s) for spot representation')
     parser.add_argument('-f', '--date-format',
                         help='Date format for strptime (default %s)' % 
                              (DATE_FORMAT.replace('%', '%%')) )
+    parser.add_argument('--density-window-size', type=int,
+                        help='Size of the time windows for counting the density (seconds). Default is 5 min.')
 
     args = parser.parse_args()
 
     input_file = args.file[0]
     if args.date_format: DATE_FORMAT = args.date_format
+    if args.density_window_size: DENSITY_WINDOW_SIZE_S = args.density_window_size
 
     lines = load_file(input_file)
 
     analysis_density = {}
-    for pattern_density in args.density:
-        analysis = get_density_analysis(lines, pattern_density)
-        analysis_density[pattern_density] = analysis
+    if args.density:
+        for pattern_density in args.density:
+            analysis = get_density_analysis(lines, pattern_density)
+            analysis_density[pattern_density] = analysis
 
     analysis_spot = {}
-    for pattern_spot in args.spot:
-        analysis = get_spot_analysis(lines, pattern_spot)
-        analysis_spot[pattern_spot] = analysis
+    if args.spot:
+        for pattern_spot in args.spot:
+            analysis = get_spot_analysis(lines, pattern_spot)
+            analysis_spot[pattern_spot] = analysis
 
     # Add starting point and ending point to have a global duration covering
     # the whole period.
