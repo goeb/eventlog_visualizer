@@ -20,7 +20,7 @@ import re
 import matplotlib.pyplot as pyplot
 import matplotlib.dates as mdates
 
-VERSION = '1.0'
+VERSION = '1.1'
 DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 DENSITY_WINDOW_SIZE_S = 300 # 5 minutes
 
