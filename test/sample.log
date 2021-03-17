@@ -1,14 +1,35 @@
 2019-03-15T13:02:45.128 info available space: 50 M
-2019-03-15T13:07:44.128 info available space: 50 M
-2019-03-15T13:12:43.128 info available space: 50 M
+2019-03-15T13:07:44.128 info available space: 55 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
+2019-03-15T13:12:43.128 info available space: 53 M
 2019-03-15T13:17:41.128 warning
 2019-03-15T13:17:42.128 err Disk access I/O error on sector 0x00012221
-2019-03-15T13:22:41.128 info available space: 50 M
-2019-03-15T13:27:40.128 info available space: 50 M
+2019-03-15T13:22:41.128 info available space: 60 M
+2019-03-15T13:27:40.128 info available space: 70 M
 2019-03-15T13:32:39.128 err Disk access I/O error on sector 0x00012221
 2019-03-15T13:33:39.128 err Disk access I/O error on sector 0x00012221
-2019-03-15T13:37:38.128 info available space: 50 M
-2019-03-15T13:42:37.128 info available space: 50 M
+2019-03-15T13:37:38.128 info available space: 43 M
+2019-03-15T13:42:37.128 info available space: 54 M
 2019-03-15T13:47:20.000 warning
 2019-03-15T14:47:30.000 warning
 2019-03-15T14:47:36.128 err
@@ -16,7 +37,7 @@
 2019-03-15T14:49:36.128 err
 2019-03-15T14:50:36.128 err
 2019-03-15T14:51:36.128 info available space: 50 M
-2019-03-15T14:52:36.128 info available space: 50 M
-2019-03-15T14:55:36.128 info available space: 50 M
-2019-03-15T14:58:36.128 info available space: 50 M
-2019-03-15T15:15:36.128 info available space: 50 M
+2019-03-15T14:52:36.128 info available space: 40 M
+2019-03-15T14:55:36.128 info available space: 30 M
+2019-03-15T14:58:36.128 info available space: 20 M
+2019-03-15T15:15:36.128 info available space: 15 M
