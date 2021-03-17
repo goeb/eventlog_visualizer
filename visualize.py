@@ -73,16 +73,20 @@ def get_density_analysis(lines, pattern_density):
     if len(lines) == 0: return density_analysis
 
     # Start from the first datetime and walk through each subsequent time window.
-    window_start, data = parse_line(lines[0])
+    window_start = None
     window_count = 0
     window_size = datetime.timedelta(seconds=DENSITY_WINDOW_SIZE_S)
-    save_d = window_start # used for detecting time going backward
 
     for line in lines:
         d, data = parse_line(line)
         if d is None:
             lines.pop(0) # consume the line
             continue
+
+        if window_start is None:
+            # Initialize the first window
+            window_start = d
+            save_d = window_start # used for detecting time going backward
 
         if d < save_d:
             # The datetime is in the past.
