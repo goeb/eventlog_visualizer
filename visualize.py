@@ -20,13 +20,17 @@ Example:
 import sys
 import argparse
 import datetime
+import pytz
 import re
 import matplotlib.pyplot as pyplot
 import matplotlib.dates as mdates
 import matplotlib.ticker as mticker
 
 VERSION = '1.2'
-DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+DEFAULT_DATE_FORMATS = [
+        "%Y-%m-%dT%H:%M:%S.%f",
+        "%Y-%m-%dT%H:%M:%S.%f%z"
+        ]
 DENSITY_WINDOW_SIZE_S = 300 # 5 minutes
 
 def log_error(msg):
@@ -37,28 +41,62 @@ def die(msg):
     sys.exit(1)
 
 
-def load_file(input_file):
-    try:
-        f = open(input_file)
-    except Exception as e:
-        die(str(e))
+def load_files(input_files):
+    lines = []
+    for input_file in input_files:
+        try:
+            f = open(input_file)
+        except Exception as e:
+            die(str(e))
 
-    lines = f.readlines()
-    f.close()
+        lines += f.readlines()
+        f.close()
+
     # remove EOL CR/LF
     lines = [line.rstrip() for line in lines]
     return lines
 
-def parse_line(line):
+def parse_line(line, date_formats, date_size):
     """Return the date and data."""
     try:
-        date_str, data = line.split(' ', 1)
-        date_object = datetime.datetime.strptime(date_str, DATE_FORMAT)
-        return date_object, data
+        if date_size is not None:
+            date_str = line[:date_size]
+            data = line[date_size:]
+        else:
+            # A line is expected to start with the date (that contains no blank) followed by a blank)
+            date_str, data = line.split(None, 1)
+
+        date_object = None
+        for date_format in date_formats:
+            try:
+                date_object = datetime.datetime.strptime(date_str, date_format)
+                break # no exception means that the date format is the right one
+            except ValueError:
+                pass
+
+        if date_object is None:
+            return None, None
+        else:
+            # In order to be able to compare mixed datetimes with and without timezone info
+            # it is needed to add a timezone info (UTC) if none is known.
+            if date_object.tzinfo is None:
+                date_object = pytz.UTC.localize(date_object)
+            return date_object, data
     except:
         return None, None
 
-def get_density_analysis(lines, pattern_density):
+
+def parse_dates(lines, date_formats, date_size):
+    """Parse the date of each line"""
+    dated_lines = []
+    for line in lines:
+        d, data = parse_line(line, date_formats, date_size)
+        if d is not None:
+            dated_lines.append( (d, data, line) )
+    return dated_lines
+
+
+def get_density_analysis(dated_lines, pattern_density):
     """Return the density analysis of a pattern.
 
     This tells how frequent a pattern is in a period of time.
@@ -66,22 +104,19 @@ def get_density_analysis(lines, pattern_density):
     in the previous period. When the number is zero, the count is not stored.
     """
 
-    events_window = [] # tuple ( <datetime>, <data> )
     density_analysis = []
-    pattern_re = re.compile(pattern_density)
 
-    if len(lines) == 0: return density_analysis
+    if len(dated_lines) == 0: return density_analysis
+
+    events_window = [] # tuple ( <datetime>, <data> )
+    pattern_re = re.compile(pattern_density)
 
     # Start from the first datetime and walk through each subsequent time window.
     window_start = None
     window_count = 0
     window_size = datetime.timedelta(seconds=DENSITY_WINDOW_SIZE_S)
 
-    for line in lines:
-        d, data = parse_line(line)
-        if d is None:
-            lines.pop(0) # consume the line
-            continue
+    for d, data, original_line in dated_lines:
 
         if window_start is None:
             # Initialize the first window
@@ -91,7 +126,7 @@ def get_density_analysis(lines, pattern_density):
         if d < save_d:
             # The datetime is in the past.
             # Raise an error and ignore this line.
-            log_error('Line in the past (ignored): ' + line)
+            log_error('Line in the past (ignored): ' + original_line)
             continue
         else:
             save_d = d
@@ -115,32 +150,31 @@ def get_density_analysis(lines, pattern_density):
     return density_analysis
 
 
-def get_spot_analysis(lines, pattern_spot):
+def get_spot_analysis(dated_lines, pattern_spot):
     """Return the list of the dates when the event is matching the pattern."""
+
     spot_analysis = [] # [ <datetime> ]
     pattern_spot_re = re.compile(pattern_spot)
-    for line in lines:
-        d, data = parse_line(line)
-        if d is None: continue
 
+    for d, data, original_line in dated_lines:
         if pattern_spot_re.search(data):
             spot_analysis.append(d)
 
     return spot_analysis
 
 
-def get_value_analysis(lines, pattern_value):
+def get_value_analysis(dated_lines, pattern_value):
     """Return the list of the dates and values.
     
     Arguments:
-        lines         : the lines of data
+        dated_lines   : A list of tuples (<datetime>, <data>, <original-line>)
         pattern_value : a REGEXP that must contain one group for capturing the numeric value
     """
+
     value_analysis = [] # [ (<datetime>, <value>) ]
     pattern_value_re = re.compile(pattern_value)
-    for line in lines:
-        d, data = parse_line(line)
-        if d is None: continue
+
+    for d, data, original_line in dated_lines:
 
         m = pattern_value_re.search(data)
         if m:
@@ -239,7 +273,7 @@ def display_graph(title, analysis_density, analysis_spot, analysis_value):
     curves = []
 
     ax1.format_xdata = mdates.DateFormatter('%Y-%m-%d %H:%M')
-    ax1.set_xlabel('datetime')
+    ax1.set_xlabel('Datetime (UTC)')
     ax1.get_yaxis().set_visible(False) 
     color_idx = 0 # increased for each dataset
 
@@ -284,9 +318,9 @@ def display_graph(title, analysis_density, analysis_spot, analysis_value):
 
 
 def main():
-    global DATE_FORMAT, DENSITY_WINDOW_SIZE_S
+    global DENSITY_WINDOW_SIZE_S
     parser = argparse.ArgumentParser(description=main.__doc__, prog='visualize')
-    parser.add_argument('file', nargs=1, help='log file')
+    parser.add_argument('file', nargs='+', help='log file')
     parser.add_argument('-V', '--version', help='print version and exit',
                         action='version', version='%(prog)s' + VERSION)
     parser.add_argument('-d', '--density', nargs='+', metavar='PATTERN',
@@ -295,37 +329,45 @@ def main():
                         help='pattern(s) for spot representation (RegEx)')
     parser.add_argument('-v', '--value', nargs='+', metavar='PATTERN',
                         help='pattern(s) for value representation (RegEx)')
-    parser.add_argument('-f', '--date-format',
-                        help='Date format for strptime (default %s)' % 
-                             (DATE_FORMAT.replace('%', '%%')) )
+    parser.add_argument('-f', '--date-format', nargs='+',
+                        help='Date formats (strptime). Eg. "%%Y-%%m-%%dT%%H:%%M:%%S.%%f%%z"')
+    parser.add_argument('--date-size', nargs=1, type=int,
+                        help='Date size (octets). If not specified, the first blank character'
+                             'determines the end of the date field.')
     parser.add_argument('--density-window-size', type=int,
                         help='Size of the time window for counting the density (seconds). Default is 5 min.')
     parser.add_argument('-t', '--title', help='Set a title.')
 
     args = parser.parse_args()
 
-    input_file = args.file[0]
-    if args.date_format: DATE_FORMAT = args.date_format
+    date_formats = DEFAULT_DATE_FORMATS
+    if args.date_format:
+        date_formats = args.date_format
+
     if args.density_window_size: DENSITY_WINDOW_SIZE_S = args.density_window_size
 
-    lines = load_file(input_file)
+    lines = load_files(args.file)
+
+    date_size = None
+    if args.date_size: date_size = args.date_size[0]
+    dated_lines = parse_dates(lines, date_formats, date_size)
 
     analysis_density = {}
     if args.density:
         for pattern_density in args.density:
-            analysis = get_density_analysis(lines, pattern_density)
+            analysis = get_density_analysis(dated_lines, pattern_density)
             analysis_density[pattern_density] = analysis
 
     analysis_spot = {}
     if args.spot:
         for pattern_spot in args.spot:
-            analysis = get_spot_analysis(lines, pattern_spot)
+            analysis = get_spot_analysis(dated_lines, pattern_spot)
             analysis_spot[pattern_spot] = analysis
 
     analysis_value = {}
     if args.value:
         for pattern_value in args.value:
-            analysis = get_value_analysis(lines, pattern_value)
+            analysis = get_value_analysis(dated_lines, pattern_value)
             analysis_value[pattern_value] = analysis
 
     display_graph(args.title, analysis_density, analysis_spot, analysis_value)
