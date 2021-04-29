@@ -183,7 +183,7 @@ def get_value_analysis(dated_lines, pattern_value):
                 value = float(value_str)
                 value_analysis.append( (d, value) )
             except:
-                log_error('Cannot extract numeric (%s): %s' % (pattern_value, line))
+                log_error('Cannot extract numeric (%s): %s' % (pattern_value, original_line))
 
     return value_analysis
 
