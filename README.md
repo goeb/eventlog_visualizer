@@ -1,7 +1,7 @@
 
 # Eventlog Visualizer
 
-Eventlog Visualizer is a tool that show a graph of events over time in either of two representations:
+Eventlog Visualizer is a tool that shows a graph of events over time in either of two representations:
 
     - 'spot': events are represented as points
     - 'density': the number of events per period is represented as a curve
